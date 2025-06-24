@@ -6,9 +6,9 @@ export function canMoveTo(position: Position, room: Room, objects: GameObject[])
     return false;
   }
 
-  // Check collision with objects
+  // Check collision with non-door objects
   for (const obj of objects) {
-    if (
+    if (obj.type !== 'door' && // Allow movement through doors
       position.x >= obj.position.x &&
       position.x < obj.position.x + obj.width &&
       position.y >= obj.position.y &&

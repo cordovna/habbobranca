@@ -9,12 +9,50 @@ const initialRoom: Room = {
   height: 8,
   floorColor: '#E5F3FF',
   wallColor: '#BFDBFE',
-  objects: []
+  backgroundImage: '/33d350e1-0995-4e5b-b774-7ab02e2b7e1f.png',
+  spawnPosition: { x: 4, y: 4 },
+  objects: [
+    {
+      id: 'door-1',
+      type: 'door',
+      name: 'Porta',
+      position: { x: 9, y: 3 },
+      width: 1,
+      height: 1,
+      color: '#8B4513',
+      interactive: true,
+      targetRoom: 'room-2'
+    }
+  ]
+};
+
+const outdoorRoom: Room = {
+  id: 'room-2',
+  name: 'Área Externa',
+  width: 12,
+  height: 10,
+  floorColor: '#90EE90',
+  wallColor: '#87CEEB',
+  backgroundImage: '/77580a73-240b-42f6-b664-daa2b7600680.png',
+  spawnPosition: { x: 1, y: 5 },
+  objects: [
+    {
+      id: 'door-2',
+      type: 'door',
+      name: 'Porta de Entrada',
+      position: { x: 0, y: 5 },
+      width: 1,
+      height: 1,
+      color: '#8B4513',
+      interactive: true,
+      targetRoom: 'room-1'
+    }
+  ]
 };
 
 const initialPlayer: Player = {
   id: 'player-1',
-  name: 'Você',
+  name: 'Player',
   position: { x: 4, y: 4 },
   direction: 'down',
   isMoving: false,
@@ -27,7 +65,11 @@ const initialPlayer: Player = {
 export const useGameState = () => {
   const [gameState, setGameState] = useState<GameState>({
     player: initialPlayer,
-    room: initialRoom,
+    currentRoomId: 'room-1',
+    rooms: {
+      'room-1': initialRoom,
+      'room-2': outdoorRoom
+    },
     chatMessages: [],
     isGameRunning: true
   });
@@ -44,6 +86,24 @@ export const useGameState = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Clear player message after 5 seconds
+  useEffect(() => {
+    if (gameState.player.currentMessage && gameState.player.messageTimestamp) {
+      const timeout = setTimeout(() => {
+        setGameState(prevState => ({
+          ...prevState,
+          player: {
+            ...prevState.player,
+            currentMessage: undefined,
+            messageTimestamp: undefined
+          }
+        }));
+      }, 5000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [gameState.player.currentMessage, gameState.player.messageTimestamp]);
+
   // Smooth movement animation
   useEffect(() => {
     if (!targetPosition) return;
@@ -51,10 +111,34 @@ export const useGameState = () => {
     const moveInterval = setInterval(() => {
       setGameState(prevState => {
         const currentPos = prevState.player.position;
+        const currentRoom = prevState.rooms[prevState.currentRoomId];
         
         // Check if we've reached the target
         if (currentPos.x === targetPosition.x && currentPos.y === targetPosition.y) {
           setTargetPosition(null);
+          
+          // Check if player is on a door
+          const doorObject = currentRoom.objects.find(obj => 
+            obj.type === 'door' && 
+            obj.position.x === currentPos.x && 
+            obj.position.y === currentPos.y
+          );
+
+          if (doorObject && doorObject.targetRoom) {
+            const targetRoom = prevState.rooms[doorObject.targetRoom];
+            if (targetRoom && targetRoom.spawnPosition) {
+              return {
+                ...prevState,
+                currentRoomId: doorObject.targetRoom,
+                player: {
+                  ...prevState.player,
+                  position: targetRoom.spawnPosition,
+                  isMoving: false
+                }
+              };
+            }
+          }
+
           return {
             ...prevState,
             player: {
@@ -86,7 +170,7 @@ export const useGameState = () => {
         const nextPos = { x: nextX, y: nextY };
 
         // Check if the next position is valid
-        if (canMoveTo(nextPos, prevState.room, prevState.room.objects)) {
+        if (canMoveTo(nextPos, currentRoom, currentRoom.objects)) {
           return {
             ...prevState,
             player: {
@@ -120,25 +204,41 @@ export const useGameState = () => {
     }
   }, [targetPosition]);
 
-  const addChatMessage = useCallback((message: string) => {
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      playerId: gameState.player.id,
-      playerName: gameState.player.name,
-      message,
-      timestamp: Date.now()
-    };
+  const sendMessage = useCallback((message: string) => {
+    if (message.trim()) {
+      setGameState(prevState => ({
+        ...prevState,
+        player: {
+          ...prevState.player,
+          currentMessage: message.trim(),
+          messageTimestamp: Date.now()
+        }
+      }));
 
-    setGameState(prevState => ({
-      ...prevState,
-      chatMessages: [...prevState.chatMessages, newMessage]
-    }));
+      const newMessage: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        playerId: gameState.player.id,
+        playerName: gameState.player.name,
+        message: message.trim(),
+        timestamp: Date.now()
+      };
+
+      setGameState(prevState => ({
+        ...prevState,
+        chatMessages: [...prevState.chatMessages, newMessage]
+      }));
+    }
   }, [gameState.player.id, gameState.player.name]);
+
+  const getCurrentRoom = useCallback(() => {
+    return gameState.rooms[gameState.currentRoomId];
+  }, [gameState.rooms, gameState.currentRoomId]);
 
   return {
     gameState,
     onlineTime,
     movePlayerTo,
-    addChatMessage
+    sendMessage,
+    getCurrentRoom
   };
 };

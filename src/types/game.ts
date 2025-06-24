@@ -21,17 +21,20 @@ export interface Player {
     color: string;
     outfit: string;
   };
+  currentMessage?: string;
+  messageTimestamp?: number;
 }
 
 export interface GameObject {
   id: string;
-  type: 'furniture' | 'decoration' | 'interactive';
+  type: 'furniture' | 'decoration' | 'interactive' | 'door';
   name: string;
   position: Position;
   width: number;
   height: number;
   color: string;
   interactive?: boolean;
+  targetRoom?: string;
 }
 
 export interface Room {
@@ -42,11 +45,14 @@ export interface Room {
   objects: GameObject[];
   floorColor: string;
   wallColor: string;
+  backgroundImage?: string;
+  spawnPosition?: Position;
 }
 
 export interface GameState {
   player: Player;
-  room: Room;
+  currentRoomId: string;
+  rooms: { [key: string]: Room };
   chatMessages: ChatMessage[];
   isGameRunning: boolean;
 }
