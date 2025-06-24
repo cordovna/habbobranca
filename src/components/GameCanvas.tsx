@@ -8,12 +8,21 @@ interface GameCanvasProps {
   width: number;
   height: number;
   onPlayerMove: (targetPosition: { x: number; y: number }) => void;
+  onRoomChange: (roomId: string) => void;
 }
 
-const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, currentRoom, width, height, onPlayerMove }) => {
+const GameCanvas: React.FC<GameCanvasProps> = ({ 
+  gameState, 
+  currentRoom, 
+  width, 
+  height, 
+  onPlayerMove,
+  onRoomChange 
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
   const [playerImage, setPlayerImage] = useState<HTMLImageElement | null>(null);
+  const [nearbyDoor, setNearbyDoor] = useState<any>(null);
 
   // Load images
   useEffect(() => {
@@ -36,6 +45,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, currentRoom, width, 
     loadBackgroundImage();
     loadPlayerImage();
   }, [currentRoom.backgroundImage]);
+
+  // Check if player is near a door
+  useEffect(() => {
+    const playerPos = gameState.player.position;
+    const door = currentRoom.objects.find(obj => {
+      if (obj.type !== 'door') return false;
+      
+      const distance = Math.abs(obj.position.x - playerPos.x) + Math.abs(obj.position.y - playerPos.y);
+      return distance <= 1; // Adjacent to door
+    });
+
+    setNearbyDoor(door || null);
+  }, [gameState.player.position, currentRoom.objects]);
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -64,6 +86,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, currentRoom, width, 
 
     onPlayerMove({ x: targetX, y: targetY });
   }, [currentRoom.width, currentRoom.height, width, height, onPlayerMove]);
+
+  const handleDoorAction = useCallback(() => {
+    if (nearbyDoor && nearbyDoor.targetRoom) {
+      onRoomChange(nearbyDoor.targetRoom);
+    }
+  }, [nearbyDoor, onRoomChange]);
 
   const drawSpeechBubble = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, message: string) => {
     const padding = 8;
@@ -157,9 +185,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, currentRoom, width, 
     const screenY = iso.isoY + offsetY;
 
     if (playerImage) {
-      // Draw player image - MUITO MAIOR
-      const playerWidth = 120;  // Aumentado de 80 para 120
-      const playerHeight = 150; // Aumentado de 100 para 150
+      // Draw player image
+      const playerWidth = 120;
+      const playerHeight = 150;
       
       // Draw shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
@@ -265,14 +293,31 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, currentRoom, width, 
 
   }, [gameState, currentRoom, width, height, backgroundImage, drawPlayer]);
 
+  const getDoorButtonText = () => {
+    if (!nearbyDoor) return '';
+    return currentRoom.id === 'room-1' ? 'Sair' : 'Entrar';
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      className="border-2 border-gray-600 rounded-lg shadow-2xl cursor-pointer"
-      onClick={handleCanvasClick}
-    />
+    <div className="relative">
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        className="border-2 border-gray-600 rounded-lg shadow-2xl cursor-pointer"
+        onClick={handleCanvasClick}
+      />
+      
+      {/* Door Action Button */}
+      {nearbyDoor && (
+        <button
+          onClick={handleDoorAction}
+          className="absolute top-4 right-4 px-3 py-1 bg-white bg-opacity-90 text-gray-800 text-sm font-medium rounded-full shadow-lg hover:bg-opacity-100 transition-all duration-200 border border-gray-200"
+        >
+          {getDoorButtonText()}
+        </button>
+      )}
+    </div>
   );
 };
 

@@ -117,28 +117,6 @@ export const useGameState = () => {
         if (currentPos.x === targetPosition.x && currentPos.y === targetPosition.y) {
           setTargetPosition(null);
           
-          // Check if player is on a door
-          const doorObject = currentRoom.objects.find(obj => 
-            obj.type === 'door' && 
-            obj.position.x === currentPos.x && 
-            obj.position.y === currentPos.y
-          );
-
-          if (doorObject && doorObject.targetRoom) {
-            const targetRoom = prevState.rooms[doorObject.targetRoom];
-            if (targetRoom && targetRoom.spawnPosition) {
-              return {
-                ...prevState,
-                currentRoomId: doorObject.targetRoom,
-                player: {
-                  ...prevState.player,
-                  position: targetRoom.spawnPosition,
-                  isMoving: false
-                }
-              };
-            }
-          }
-
           return {
             ...prevState,
             player: {
@@ -204,6 +182,22 @@ export const useGameState = () => {
     }
   }, [targetPosition]);
 
+  const changeRoom = useCallback((roomId: string) => {
+    const targetRoom = gameState.rooms[roomId];
+    if (targetRoom && targetRoom.spawnPosition) {
+      setGameState(prevState => ({
+        ...prevState,
+        currentRoomId: roomId,
+        player: {
+          ...prevState.player,
+          position: targetRoom.spawnPosition!,
+          isMoving: false
+        }
+      }));
+      setTargetPosition(null);
+    }
+  }, [gameState.rooms]);
+
   const sendMessage = useCallback((message: string) => {
     if (message.trim()) {
       setGameState(prevState => ({
@@ -239,6 +233,7 @@ export const useGameState = () => {
     onlineTime,
     movePlayerTo,
     sendMessage,
-    getCurrentRoom
+    getCurrentRoom,
+    changeRoom
   };
 };

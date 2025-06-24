@@ -4,7 +4,7 @@ import ChatInput from './ChatInput';
 import { useGameState } from '../hooks/useGameState';
 
 const Game: React.FC = () => {
-  const { gameState, movePlayerTo, sendMessage, getCurrentRoom } = useGameState();
+  const { gameState, movePlayerTo, sendMessage, getCurrentRoom, changeRoom } = useGameState();
   const currentRoom = getCurrentRoom();
 
   return (
@@ -29,6 +29,7 @@ const Game: React.FC = () => {
           width={900}
           height={600}
           onPlayerMove={movePlayerTo}
+          onRoomChange={changeRoom}
         />
       </div>
 
